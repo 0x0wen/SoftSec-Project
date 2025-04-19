@@ -1,5 +1,5 @@
 # Build stage
-FROM php:8.3-apache AS build
+FROM php:8.4.6-apache-bookworm AS build
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
