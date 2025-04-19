@@ -4,7 +4,7 @@ namespace src\exceptions;
 
 class HttpExceptionFactory
 {
-    static function createBadRequest(string $message, array $fieldErrors = null): BadRequestHttpException
+    static function createBadRequest(string $message, ?array $fieldErrors = null): BadRequestHttpException
     {
         return new BadRequestHttpException($message, $fieldErrors);
     }

@@ -12,7 +12,7 @@ class BaseHttpException extends Exception
     protected array | null $fieldErrors = null;
 
 
-    public function __construct(int $code, string $message, array $fieldErrors = null)
+    public function __construct(int $code, string $message, ?array $fieldErrors = null)
     {
         parent::__construct($message, $code);
         $this->fieldErrors = $fieldErrors;
