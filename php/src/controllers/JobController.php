@@ -72,6 +72,14 @@ class JobController extends Controller
 
         // If no exception, redirect to the attachment
         $path = $type === 'cv' ? $application->getCvPath() : $application->getVideoPath();
+        if (strpos($path, '..') !== false) {
+            $data = [
+                'statusCode' => 403,
+                'message' => "Access denied",
+            ];
+            $res->renderError($data);
+            return;
+        }
         $res->blob($path);
     }
 
