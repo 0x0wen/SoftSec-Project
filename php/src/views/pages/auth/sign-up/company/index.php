@@ -1,3 +1,6 @@
+<link rel="stylesheet" href="/styles/strong-password.css">
+<script src="/scripts/strong-password.js"></script>
+
 <main class="main">
     <section class="signup">
         <!-- Title -->
@@ -54,7 +57,7 @@
 
             <!-- Password -->
             <div class="form__group">
-                <label for="password" class="form__label 
+            <label for="password" class="form__label 
                     <?php if (isset($errorFields) && isset($errorFields['password'])):  ?>
                         <?= htmlspecialchars($errorFields['password'][0] ? 'form__error-message' : '', ENT_QUOTES, 'UTF-8') ?>
                     <?php endif; ?>
@@ -62,17 +65,33 @@
                     Password
                 </label>
                 <input
+                    id="password"
                     name="password"
                     type="password"
                     placeholder="Enter your password"
+                    class="input" 
                     value="<?= htmlspecialchars($fields['password'] ?? '', ENT_QUOTES, 'UTF-8') ?>"
-                    class="input" />
+                    />
+                
                 <p class="form__error-message">
                     <?php if (isset($errorFields) && isset($errorFields['password'])):  ?>
                         <?= htmlspecialchars($errorFields['password'][0] ?? '') ?>
                     <?php endif; ?>
                 </p>
+                    
+                <!-- Password strength meter container -->
+                <div id="password-strength" class="password-strength-meter"></div>
+                
+                <!-- Password requirements checklist container -->
+                <div id="password-requirements" class="password-requirements"></div>
             </div>
+
+            <!-- Show Password Toggle -->
+            <div class="form__group form__group--checkbox">
+                <input type="checkbox" id="show-password">
+                <label for="show-password">Show password</label>
+            </div>
+
 
             <!-- Location -->
             <div class="form__group">
@@ -117,7 +136,7 @@
             </div>
 
             <!-- submit button -->
-            <button type="submit" class="button button--default-size button--default-color">
+            <button type="submit" id="submit-button" class="button button--default-size button--default-color">
                 Register Your Company
             </button>
         </form>
@@ -131,3 +150,17 @@
         </p>
     </section>
 </main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize with default options
+        PasswordValidator.init({
+            passwordInputId: 'password',
+            meterContainerId: 'password-strength',
+            requirementsContainerId: 'password-requirements',
+            submitButtonId: 'submit-button',
+            showPasswordToggleId: 'show-password',
+            minStrength: 80
+        });
+    });
+</script>
