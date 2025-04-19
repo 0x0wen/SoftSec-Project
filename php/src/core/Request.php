@@ -119,6 +119,28 @@ class Request
     }
 
     /**
+     * Get client IP address
+     * 
+     * @return string Client IP address
+     */
+    public function getClientIp(): string
+    {
+        // Check for proxy forwarded IP
+        $ip = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? null;
+        
+        if ($ip) {
+            // If multiple IPs provided, get the first one (client's original)
+            $ips = explode(',', $ip);
+            $ip = trim($ips[0]);
+        } else {
+            // Fallback to direct connection IP
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+        }
+        
+        return $ip;
+    }
+
+    /**
      * Extract path parameters from the URI /wkwk/[FOO]/[BAR]
      * and store it in pathParams
      */

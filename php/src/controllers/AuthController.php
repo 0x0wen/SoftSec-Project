@@ -8,7 +8,7 @@ use src\dao\UserRole;
 use src\dto\DtoFactory;
 use src\exceptions\{BadRequestHttpException, BaseHttpException, InternalServerErrorHttpException, HttpExceptionFactory};
 use src\services\AuthService;
-use src\utils\{UserSession, Validator};
+use src\utils\{UserSession, Validator, RateLimiter};
 
 /**
  * Controller for handling authentication
@@ -41,6 +41,7 @@ class AuthController extends Controller
         $description = 'Sign in to your LinkInPurry account';
         $additionalTags = <<<HTML
                 <link rel="stylesheet" href="/styles/auth/sign-in.css" />
+                <script src="/scripts/auth/sign-in/rate-limiter.js" defer></script>
             HTML;
         $data = [
             'title' => $title,
@@ -48,11 +49,35 @@ class AuthController extends Controller
             'additionalTags' => $additionalTags,
         ];
 
+        $clientIp = $req->getClientIp();
+
         if ($req->getMethod() == "GET") {
+            // Check if user is rate limited and add rate limit info to view data
+            if (RateLimiter::isLimited($clientIp)) {
+                $data['rateLimited'] = true;
+                $data['lockoutTimeRemaining'] = RateLimiter::getLockoutTimeRemaining($clientIp);
+            } else {
+                $data['rateLimited'] = false;
+                $data['remainingAttempts'] = RateLimiter::getRemainingAttempts($clientIp);
+            }
+            
             // Get
             $res->renderPage($viewPathFromPages, $data);
         } else {
             // Post
+            
+            // Check if user is rate limited
+            if (RateLimiter::isLimited($clientIp)) {
+                $data['rateLimited'] = true;
+                $data['lockoutTimeRemaining'] = RateLimiter::getLockoutTimeRemaining($clientIp);
+                $data['fields'] = $req->getBody();
+                $data['errorFields'] = [
+                    'email' => ["Too many failed attempts. Please try again after " . $data['lockoutTimeRemaining']],
+                ];
+                $res->renderPage($viewPathFromPages, $data);
+                return;
+            }
+            
             // Validate the request body
             $rules = [
                 'email' => ['required', 'email'],
@@ -64,7 +89,10 @@ class AuthController extends Controller
             if (!$isValid) {
                 $data['errorFields'] = $validator->getErrorFields();
                 $data['fields'] = $req->getBody();
+                $data['rateLimited'] = false;
+                $data['remainingAttempts'] = RateLimiter::getRemainingAttempts($clientIp);
                 $res->renderPage($viewPathFromPages, $data);
+                return;
             }
 
             // Authenticate the user
@@ -72,15 +100,32 @@ class AuthController extends Controller
                 $email = $req->getBody()['email'];
                 $password = $req->getBody()['password'];
                 $user = $this->authService->signIn($email, $password);
+                
+                // Successful login - reset rate limiting attempts
+                RateLimiter::resetAttempts($clientIp);
+                
             } catch (BadRequestHttpException $e) {
-                // Failed to authenticate
-                $message = $e->getMessage();
+                // Failed to authenticate - record the failed attempt
+                $rateLimit = RateLimiter::recordFailedAttempt($clientIp);
+                
+                // Check if this attempt caused a lockout
+                if ($rateLimit['limited']) {
+                    $message = "Too many failed login attempts. Your account is temporarily locked for security reasons. Please try again after " . $rateLimit['lockout_expires'];
+                    $data['rateLimited'] = true;
+                    $data['lockoutTimeRemaining'] = $rateLimit['lockout_expires'];
+                } else {
+                    $message = $e->getMessage() . " ({$rateLimit['remaining']} attempts remaining)";
+                    $data['rateLimited'] = false;
+                    $data['remainingAttempts'] = $rateLimit['remaining'];
+                }
+                
                 $data['errorFields'] = [
                     'email' => [$message],
                     'password' => [$message],
                 ];
                 $data['fields'] = $req->getBody();
                 $res->renderPage($viewPathFromPages, $data);
+                return;
             } catch (BaseHttpException $e) {
                 // Render error page
                 $dataError = [
@@ -89,6 +134,7 @@ class AuthController extends Controller
                 ];
 
                 $res->renderError($dataError);
+                return;
             } catch (Exception $e) {
                 // Render Internal server error
                 $dataError = [
@@ -97,6 +143,7 @@ class AuthController extends Controller
                 ];
 
                 $res->renderError($dataError);
+                return;
             }
 
             // Success
