@@ -16,7 +16,11 @@ class UserSession
     public static function start(): void
     {
         if (session_status() === PHP_SESSION_NONE) {
-            session_start();
+            session_start([
+                'cookie_httponly' => true,
+                'cookie_secure' => false, // Set to true if using HTTPS
+                'cookie_samesite' => 'Strict'
+            ]);
         }
         if (!isset($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
