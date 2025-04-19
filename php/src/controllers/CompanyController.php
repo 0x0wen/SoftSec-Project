@@ -103,6 +103,15 @@ class CompanyController extends Controller
             $res->renderPage($viewPathFromPages, $data);
         } else if ($req->getMethod() == "POST") {
             // POST
+            $csrfToken = $req->getBody()['csrf_token'] ?? null;
+            if (!$csrfToken || $csrfToken !== UserSession::getCsrfToken()) {
+                $dataError = [
+                    'statusCode' => 400,
+                    'message' => 'Invalid CSRF token'
+                ];
+                $res->renderError($dataError);
+                return; 
+            }
 
             // Validate request 
             // attachment is optional (QnA No. 30)
